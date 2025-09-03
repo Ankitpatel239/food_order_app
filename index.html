@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cafe Delight - Time Based Menu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .scanner-animation {
+            animation: scan 2s infinite linear;
+        }
+        
+        @keyframes scan {
+            0% { top: 0%; }
+            50% { top: 85%; }
+            100% { top: 0%; }
+        }
+        
+        .category-btn.active {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        .time-tab.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .day-selector.active {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .menu-item-card {
+            transition: all 0.3s ease;
+        }
+        
+        .menu-item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .cart-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .seat-option {
+            transition: all 0.3s ease;
+        }
+        
+        .seat-option:hover {
+            transform: scale(1.05);
+        }
+        
+        .seat-option.occupied {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-orange-50 min-h-screen">
+    <!-- Scanner Screen -->
+    <div id="scanner-screen" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="text-center text-white mb-8">
+            <h1 class="text-3xl font-bold mb-2">Scan Your Table QR Code</h1>
+            <p class="text-gray-300">Point your camera at the QR code on your table</p>
+        </div>
+        
+        <div class="relative w-80 h-80 border-4 border-white rounded-lg overflow-hidden">
+            <div class="absolute inset-0 bg-gray-800 opacity-50"></div>
+            <div class="scanner-animation absolute left-0 right-0 h-2 bg-green-500"></div>
+            
+            <!-- QR corner borders -->
+            <div class="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white"></div>
+            <div class="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white"></div>
+            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white"></div>
+            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white"></div>
+        </div>
+        
+        <button id="simulate-scan" class="mt-10 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-full">
+            Simulate Scan (For Demo)
+        </button>
+    </div>
+
+    <!-- Main Menu (initially hidden) -->
+    <div id="main-app" class="hidden max-w-6xl mx-auto p-4 pb-2">
+        <!-- Header with day selector -->
+        <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">Cafe Delight</h1>
+                    <p class="text-gray-600">Table #<span id="table-number">5</span></p>
+                </div>
+                
+                <div class="text-center">
+                    <p class="text-gray-600">Today is</p>
+                    <p class="font-bold text-xl text-blue-600" id="current-day">Monday</p>
+                </div>
+                
+                <div class="text-right">
+                    <p class="text-gray-600">Your Order</p>
+                    <p class="font-bold"><span id="cart-count">0</span> items</p>
+                </div>
+            </div>
+            
+            <!-- Day Selector -->
+            <div class="flex overflow-x-auto gap-2 mt-4 pb-2">
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="monday">
+                    Monday
+                </button>
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="tuesday">
+                    Tuesday
+                </button>
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="wednesday">
+                    Wednesday
+                </button>
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="thursday">
+                    Thursday
+                </button>
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="friday">
+                    Friday
+                </button>
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="saturday">
+                    Saturday
+                </button>
+                <button class="day-selector px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-day="sunday">
+                    Sunday
+                </button>
+            </div>
+        </div>
+
+        <!-- Time-based categories -->
+        <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-center">Today's Menu</h2>
+            <div class="flex flex-wrap justify-center gap-2 mb-6">
+                <button class="time-tab active px-4 py-2 sm:px-6 sm:py-3 bg-blue-100 text-blue-800 rounded-full font-semibold border border-blue-200 text-sm sm:text-base" data-time="morning">
+                    <i class="fas fa-sun mr-2"></i>Morning
+                </button>
+                <button class="time-tab px-4 py-2 sm:px-6 sm:py-3 bg-yellow-100 text-yellow-800 rounded-full font-semibold border border-yellow-200 text-sm sm:text-base" data-time="lunch">
+                    <i class="fas fa-utensils mr-2"></i>Lunch
+                </button>
+                <button class="time-tab px-4 py-2 sm:px-6 sm:py-3 bg-purple-100 text-purple-800 rounded-full font-semibold border border-purple-200 text-sm sm:text-base" data-time="dinner">
+                    <i class="fas fa-moon mr-2"></i>Dinner
+                </button>
+            </div>
+            
+            <!-- Categories -->
+            <div class="flex overflow-x-auto py-2 gap-2">
+                <button class="category-btn active px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-category="all">
+                    All Items
+                </button>
+                <button class="category-btn px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-category="special">
+                    Specials
+                </button>
+                <button class="category-btn px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-category="main">
+                    Main Course
+                </button>
+                <button class="category-btn px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-category="sides">
+                    Sides
+                </button>
+                <button class="category-btn px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-category="drinks">
+                    Drinks
+                </button>
+                <button class="category-btn px-4 py-2 bg-white rounded-full border border-gray-200 whitespace-nowrap" data-category="desserts">
+                    Desserts
+                </button>
+            </div>
+        </div>
+
+        <!-- Menu Items Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6" id="menu-items">
+            <!-- Items will be populated by JavaScript -->
+        </div>
+
+        <!-- Cart Footer -->
+        <div class="fixed bottom-6 right-6 z-40">
+            <button id="view-cart" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-full shadow-lg flex items-center gap-3 transition-transform duration-200 active:scale-95">
+                <span class="text-lg relative">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="cart-badge">0</span>
+                </span>
+                <span class="hidden">View Cart</span>
+                <span class="font-bold hidden" id="cart-total">₹0.00</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden px-4">
+        <div class="bg-white rounded-xl w-full max-w-md max-h-[98vh] overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-orange-500 text-white">
+                <h2 class="text-xl font-bold">Your Order - Table #<span id="cart-table-number">5</span></h2>
+                <button id="close-cart" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto flex-1" id="cart-items">
+                <p class="text-gray-500 text-center py-8" id="empty-cart-message">Your cart is empty</p>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 bg-gray-50">
+                <div class="mb-4">
+                    <label for="special-instructions" class="block text-gray-700 mb-2 font-semibold">Special Instructions</label>
+                    <textarea id="special-instructions" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" rows="2" placeholder="Extra cheese, no onions, etc."></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="user-name" class="block text-gray-700 mb-2 font-semibold">Your Name</label>
+                        <input type="text" id="user-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" placeholder="Enter your name">
+                    </div>
+                    <div>
+                        <label for="user-phone" class="block text-gray-700 mb-2 font-semibold">Your Phone</label>
+                        <input type="text" id="user-phone" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" placeholder="Enter your phone">
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mb-4">
+                    <span class="font-bold text-lg">Total:</span>
+                    <span class="font-bold text-xl text-orange-600" id="cart-modal-total">₹0.00</span>
+                </div>
+                
+                <button id="place-order" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200">
+                    Place Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seat Selection Modal -->
+    <div id="seat-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden px-4">
+        <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-blue-500 text-white">
+                <h2 class="text-xl font-bold">Select Your Seat</h2>
+                <button id="close-seat-modal" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto flex-1">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold mb-2">Available Seats</h3>
+                    <p class="text-gray-600 mb-4">Please select your seat number to continue with your order.</p>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="seat-options">
+                        <!-- Seat options will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-gray-100 rounded-lg">
+                    <h4 class="font-semibold mb-2">Seating Information</h4>
+                    <p class="text-sm text-gray-600">Our cafe has a total of 20 seats with varying capacities. Green seats are available, while gray seats are currently occupied.</p>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 bg-gray-50">
+                <button id="confirm-seat" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200">
+                    Confirm Seat Selection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Confirmation -->
+    <div id="order-confirmation" class="fixed inset-0 bg-green-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl p-8 max-w-md text-center shadow-2xl">
+            <div class="text-green-500 text-5xl mb-4">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2 text-gray-800">Order Placed Successfully!</h2>
+            <p class="text-gray-600 mb-6">Your food will be delivered to Table #<span id="confirm-table-number">5</span> shortly.</p>
+            <button id="new-order" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200">
+                Start New Order
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Menu data with time-based and day-specific items
+        const menuData = {
+            morning: {
+                monday: [
+                    { id: 101, name: "Masala Dosa", price: 89, category: "special", description: "Crispy rice crepe with potato filling", image: "🥘", isSpecial: true },
+                    { id: 102, name: "Idli Sambar", price: 69, category: "main", description: "Steamed rice cakes with lentil soup", image: "🍛", isVeg: true },
+                    { id: 103, name: "Poha", price: 49, category: "main", description: "Flattened rice with spices and peanuts", image: "🍚", isVeg: true },
+                    { id: 104, name: "Fresh Orange Juice", price: 99, category: "drinks", description: "Freshly squeezed oranges", image: "🍊", isVeg: true }
+                ],
+                tuesday: [
+                    { id: 105, name: "Upma", price: 59, category: "main", description: "Semolina cooked with vegetables", image: "🍲", isVeg: true },
+                    { id: 106, name: "Medu Vada", price: 79, category: "sides", description: "Savory lentil donuts", image: "🥯", isVeg: true },
+                    { id: 107, name: "Filter Coffee", price: 49, category: "drinks", description: "South Indian filter coffee", image: "☕", isVeg: true }
+                ],
+                wednesday: [
+                    { id: 108, name: "Aloo Paratha", price: 79, category: "main", description: "Whole wheat bread stuffed with potatoes", image: "🫓", isVeg: true },
+                    { id: 109, name: "Curd", price: 39, category: "sides", description: "Fresh yogurt", image: "🥣", isVeg: true },
+                    { id: 110, name: "Tea", price: 29, category: "drinks", description: "Hot Indian tea", image: "🍵", isVeg: true }
+                ],
+                thursday: [
+                    { id: 111, name: "Pongal", price: 69, category: "main", description: "Rice and lentil dish", image: "🍚", isVeg: true },
+                    { id: 112, name: "Sambar", price: 49, category: "sides", description: "South Indian lentil stew", image: "🥘", isVeg: true },
+                    { id: 113, name: "Coconut Chutney", price: 29, category: "sides", description: "Coconut based dip", image: "🥥", isVeg: true }
+                ],
+                friday: [
+                    { id: 114, name: "Utappam", price: 89, category: "main", description: "Savory rice pancake", image: "🥞", isVeg: true },
+                    { id: 115, name: "Tomato Chutney", price: 39, category: "sides", description: "Tangy tomato dip", image: "🍅", isVeg: true },
+                    { id: 116, name: "Badam Milk", price: 79, category: "drinks", description: "Almond flavored milk", image: "🥛", isVeg: true }
+                ],
+                saturday: [
+                    { id: 117, name: "Rava Idli", price: 79, category: "main", description: "Semolina steamed cakes", image: "🍘", isVeg: true },
+                    { id: 118, name: "Coconut Water", price: 49, category: "drinks", description: "Fresh coconut water", image: "🥥", isVeg: true },
+                    { id: 119, name: "Vada", price: 69, category: "sides", description: "Savory fried snack", image: "🍩", isVeg: true }
+                ],
+                sunday: [
+                    { id: 120, name: "Puri Bhaji", price: 99, category: "main", description: "Fried bread with potato curry", image: "🍛", isVeg: true },
+                    { id: 121, name: "Lassi", price: 69, category: "drinks", description: "Yogurt based drink", image: "🥛", isVeg: true },
+                    { id: 122, name: "Halwa", price: 59, category: "desserts", description: "Sweet semolina pudding", image: "🍮", isVeg: true }
+                ]
+            },
+            lunch: {
+                monday: [
+                    { id: 201, name: "Thali Special", price: 199, category: "special", description: "Complete meal with 5 items", image: "🍽️", isSpecial: true },
+                    { id: 202, name: "Butter Chicken", price: 249, category: "main", description: "Tandoori chicken in tomato gravy", image: "🍗", isVeg: false },
+                    { id: 203, name: "Paneer Butter Masala", price: 219, category: "main", description: "Cottage cheese in rich gravy", image: "🧀", isVeg: true },
+                    { id: 204, name: "Dal Tadka", price: 149, category: "sides", description: "Tempered lentil soup", image: "🥣", isVeg: true },
+                    { id: 205, name: "Jeera Rice", price: 99, category: "sides", description: "Cumin-flavored basmati rice", image: "🍚", isVeg: true },
+                    { id: 206, name: "Garlic Naan", price: 69, category: "sides", description: "Soft naan with garlic topping", image: "🫓", isVeg: true },
+                    { id: 207, name: "Chicken Tikka", price: 229, category: "main", description: "Grilled chicken pieces", image: "🍢", isVeg: false },
+                    { id: 208, name: "Veg Pulao", price: 129, category: "main", description: "Rice cooked with mixed vegetables", image: "🥗", isVeg: true },
+                    { id: 209, name: "Raita", price: 49, category: "sides", description: "Yogurt with cucumber and spices", image: "🥛", isVeg: true },
+                    { id: 210, name: "Mango Lassi", price: 79, category: "drinks", description: "Sweet mango yogurt drink", image: "🥭", isVeg: true },
+                    { id: 211, name: "Gulab Jamun", price: 89, category: "desserts", description: "Sweet milk dumplings", image: "🍮", isVeg: true },
+                    { id: 212, name: "Masala Papad", price: 39, category: "sides", description: "Crispy papad with spicy toppings", image: "🍘", isVeg: true }
+                ],
+                tuesday: [
+                    { id: 213, name: "Biriyani", price: 229, category: "special", description: "Fragrant rice with spices", image: "🍚", isSpecial: true },
+                    { id: 214, name: "Chole Bhature", price: 179, category: "main", description: "Spiced chickpeas with fried bread", image: "🥘", isVeg: true },
+                    { id: 215, name: "Kadai Paneer", price: 219, category: "main", description: "Cottage cheese in kadai gravy", image: "🧀", isVeg: true },
+                    { id: 216, name: "Naan", price: 49, category: "sides", description: "Traditional Indian flatbread", image: "🫓", isVeg: true },
+                    { id: 217, name: "Mixed Veg", price: 169, category: "main", description: "Assorted vegetables in gravy", image: "🥗", isVeg: true }
+                ],
+                wednesday: [
+                    { id: 218, name: "Fish Curry", price: 279, category: "special", description: "Fish in spicy coconut gravy", image: "🐟", isVeg: false, isSpecial: true },
+                    { id: 219, name: "Steam Rice", price: 89, category: "sides", description: "Plain steamed rice", image: "🍚", isVeg: true },
+                    { id: 220, name: "Cabbage Thoran", price: 129, category: "sides", description: "Stir-fried cabbage with coconut", image: "🥬", isVeg: true },
+                    { id: 221, name: "Sambhar", price: 99, category: "sides", description: "South Indian lentil stew", image: "🥘", isVeg: true },
+                    { id: 222, name: "Rasam", price: 79, category: "sides", description: "Spicy South Indian soup", image: "🍲", isVeg: true }
+                ],
+                thursday: [
+                    { id: 223, name: "Mutton Rogan Josh", price: 299, category: "special", description: "Kashmiri lamb curry", image: "🍖", isVeg: false, isSpecial: true },
+                    { id: 224, name: "Kashmiri Pulao", price: 189, category: "main", description: "Sweet and savory rice dish", image: "🍚", isVeg: true },
+                    { id: 225, name: "Yogurt", price: 49, category: "sides", description: "Plain yogurt", image: "🥣", isVeg: true },
+                    { id: 226, name: "Pickle", price: 29, category: "sides", description: "Spicy Indian pickle", image: "🥒", isVeg: true },
+                    { id: 227, name: "Papad", price: 19, category: "sides", description: "Crispy lentil wafers", image: "🍘", isVeg: true }
+                ],
+                friday: [
+                    { id: 228, name: "Prawn Curry", price: 289, category: "special", description: "Prawns in coconut gravy", image: "🦐", isVeg: false, isSpecial: true },
+                    { id: 229, name: "Lemon Rice", price: 119, category: "main", description: "Tangy lemon flavored rice", image: "🍚", isVeg: true },
+                    { id: 230, name: "Appalam", price: 29, category: "sides", description: "Lentil papad", image: "🍘", isVeg: true },
+                    { id: 231, name: "Buttermilk", price: 39, category: "drinks", description: "Spiced buttermilk", image: "🥛", isVeg: true },
+                    { id: 232, name: "Fruit Salad", price: 99, category: "desserts", description: "Fresh fruit mix", image: "🍎", isVeg: true }
+                ],
+                saturday: [
+                    { id: 233, name: "Chicken Curry", price: 239, category: "main", description: "Classic Indian chicken curry", image: "🍗", isVeg: false },
+                    { id: 234, name: "Egg Curry", price: 189, category: "main", description: "Boiled eggs in spicy gravy", image: "🥚", isVeg: false },
+                    { id: 235, name: "Paratha", price: 59, category: "sides", description: "Whole wheat flatbread", image: "🫓", isVeg: true },
+                    { id: 236, name: "Dahi", price: 49, category: "sides", description: "Yogurt", image: "🥣", isVeg: true },
+                    { id: 237, name: "Jalebi", price: 89, category: "desserts", description: "Sweet fried pretzel", image: "🥨", isVeg: true }
+                ],
+                sunday: [
+                    { id: 238, name: "Sunday Special Thali", price: 249, category: "special", description: "Special Sunday meal", image: "🍽️", isSpecial: true },
+                    { id: 239, name: "Kheer", price: 79, category: "desserts", description: "Rice pudding", image: "🍚", isVeg: true },
+                    { id: 240, name: "Papadum", price: 29, category: "sides", description: "Crispy lentil crackers", image: "🍘", isVeg: true },
+                    { id: 241, name: "Achar", price: 39, category: "sides", description: "Pickle", image: "🥒", isVeg: true },
+                    { id: 242, name: "Salad", price: 69, category: "sides", description: "Fresh vegetable salad", image: "🥗", isVeg: true }
+                ]
+            },
+            dinner: {
+                monday: [
+                    { id: 301, name: "Tandoori Platter", price: 399, category: "special", description: "Assorted grilled items", image: "🍖", isSpecial: true },
+                    { id: 302, name: "Butter Naan", price: 59, category: "sides", description: "Buttery flatbread", image: "🫓", isVeg: true },
+                    { id: 303, name: "Gulab Jamun", price: 89, category: "desserts", description: "Sweet milk dumplings", image: "🍮", isVeg: true },
+                    { id: 304, name: "Paneer Tikka", price: 229, category: "main", description: "Grilled cottage cheese", image: "🍢", isVeg: true },
+                    { id: 305, name: "Chicken Biryani", price: 269, category: "main", description: "Fragrant rice with chicken", image: "🍚", isVeg: false }
+                ],
+                tuesday: [
+                    { id: 306, name: "Mutton Biryani", price: 299, category: "special", description: "Fragrant rice with mutton", image: "🍚", isVeg: false, isSpecial: true },
+                    { id: 307, name: "Raita", price: 49, category: "sides", description: "Yogurt with veggies", image: "🥣", isVeg: true },
+                    { id: 308, name: "Kulfi", price: 79, category: "desserts", description: "Traditional Indian ice cream", image: "🍦", isVeg: true },
+                    { id: 309, name: "Aloo Gobi", price: 179, category: "main", description: "Potato and cauliflower curry", image: "🥔", isVeg: true },
+                    { id: 310, name: "Chapati", price: 29, category: "sides", description: "Whole wheat flatbread", image: "🫓", isVeg: true }
+                ],
+                wednesday: [
+                    { id: 311, name: "Fish Fry", price: 259, category: "main", description: "Spicy fried fish", image: "🐟", isVeg: false },
+                    { id: 312, name: "Lemonade", price: 59, category: "drinks", description: "Fresh lemon drink", image: "🍋", isVeg: true },
+                    { id: 313, name: "Onion Pakora", price: 99, category: "sides", description: "Onion fritters", image: "🧅", isVeg: true },
+                    { id: 314, name: "Tomato Soup", price: 89, category: "sides", description: "Hot tomato soup", image: "🍅", isVeg: true },
+                    { id: 315, name: "Gajar Halwa", price: 119, category: "desserts", description: "Carrot pudding", image: "🥕", isVeg: true }
+                ],
+                thursday: [
+                    { id: 316, name: "Egg Biryani", price: 219, category: "main", description: "Fragrant rice with eggs", image: "🍚", isVeg: false },
+                    { id: 317, name: "Mirchi Ka Salan", price: 129, category: "sides", description: "Chili curry", image: "🌶️", isVeg: true },
+                    { id: 318, name: "Baghara Rice", price: 139, category: "main", description: "Tempered rice", image: "🍚", isVeg: true },
+                    { id: 319, name: "Double Ka Meetha", price: 99, category: "desserts", description: "Bread pudding", image: "🍮", isVeg: true },
+                    { id: 320, name: "Green Salad", price: 79, category: "sides", description: "Fresh greens", image: "🥗", isVeg: true }
+                ],
+                friday: [
+                    { id: 321, name: "Friday Special Grill", price: 459, category: "special", description: "Mixed grill platter", image: "🍖", isVeg: false, isSpecial: true },
+                    { id: 322, name: "Garlic Bread", price: 89, category: "sides", description: "Toasted bread with garlic", image: "🍞", isVeg: true },
+                    { id: 323, name: "Pasta", price: 189, category: "main", description: "Italian pasta", image: "🍝", isVeg: true },
+                    { id: 324, name: "French Fries", price: 99, category: "sides", description: "Crispy fried potatoes", image: "🍟", isVeg: true },
+                    { id: 325, name: "Chocolate Cake", price: 129, category: "desserts", description: "Rich chocolate cake", image: "🍰", isVeg: true }
+                ],
+                saturday: [
+                    { id: 326, name: "Saturday Night Feast", price: 499, category: "special", description: "Grand dinner platter", image: "🍽️", isSpecial: true },
+                    { id: 327, name: "Mocktail", price: 149, category: "drinks", description: "Fruit mocktail", image: "🍹", isVeg: true },
+                    { id: 328, name: "Spring Rolls", price: 129, category: "sides", description: "Crispy vegetable rolls", image: "🌯", isVeg: true },
+                    { id: 329, name: "Fried Rice", price: 179, category: "main", description: "Chinese fried rice", image: "🍚", isVeg: true },
+                    { id: 330, name: "Manchurian", price: 199, category: "main", description: "Indo-Chinese dish", image: "🍛", isVeg: true }
+                ],
+                sunday: [
+                    { id: 331, name: "Sunday Dinner Special", price: 349, category: "special", description: "Special Sunday dinner", image: "🍽️", isSpecial: true },
+                    { id: 332, name: "Ice Cream", price: 89, category: "desserts", description: "Vanilla ice cream", image: "🍨", isVeg: true },
+                    { id: 333, name: "Soup", price: 99, category: "sides", description: "Hot and sour soup", image: "🍲", isVeg: true },
+                                    { id: 334, name: "Noodles", price: 169, category: "main", description: "Stir-fried noodles", image: "🍜", isVeg: true },
+                { id: 335, name: "Custard", price: 79, category: "desserts", description: "Sweet custard pudding", image: "🍮", isVeg: true }
+            ]
+        }
+    };
+
+    // Seat data with capacity and availability
+    const seatData = [
+        { id: 1, capacity: 2, isAvailable: true, description: "Window seat with view", section: "Main Hall" },
+        { id: 2, capacity: 4, isAvailable: true, description: "Family table", section: "Main Hall" },
+        { id: 3, capacity: 6, isAvailable: true, description: "Large group table", section: "Main Hall" },
+        { id: 4, capacity: 2, isAvailable: true, description: "Cozy corner table", section: "Garden Area" },
+        { id: 5, capacity: 4, isAvailable: false, description: "Currently occupied", section: "Garden Area" },
+        { id: 6, capacity: 2, isAvailable: true, description: "Quiet reading nook", section: "Library Section" },
+        { id: 7, capacity: 4, isAvailable: true, description: "Central table", section: "Main Hall" },
+        { id: 8, capacity: 8, isAvailable: true, description: "Party table", section: "Private Room" },
+        { id: 9, capacity: 2, isAvailable: false, description: "Currently occupied", section: "Main Hall" },
+        { id: 10, capacity: 4, isAvailable: true, description: "Near entertainment area", section: "Main Hall" },
+        { id: 11, capacity: 2, isAvailable: true, description: "Outdoor seating", section: "Patio" },
+        { id: 12, capacity: 4, isAvailable: true, description: "Garden view", section: "Garden Area" },
+        { id: 13, capacity: 6, isAvailable: false, description: "Reserved for event", section: "Main Hall" },
+        { id: 14, capacity: 2, isAvailable: true, description: "Counter seating", section: "Coffee Bar" },
+        { id: 15, capacity: 4, isAvailable: true, description: "Quiet conversation area", section: "Library Section" }
+    ];
+
+    // Current state
+    let cart = [];
+    let currentCategory = 'all';
+    let currentTime = 'morning';
+    let currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    let selectedSeat = null;
+    let tableNumber = null;
+
+    // DOM elements
+    const scannerScreen = document.getElementById('scanner-screen');
+    const mainApp = document.getElementById('main-app');
+    const simulateScanBtn = document.getElementById('simulate-scan');
+    const menuItemsContainer = document.getElementById('menu-items');
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    const timeTabs = document.querySelectorAll('.time-tab');
+    const daySelectors = document.querySelectorAll('.day-selector');
+    const cartCount = document.getElementById('cart-count');
+    const cartBadge = document.getElementById('cart-badge');
+    const cartTotal = document.getElementById('cart-total');
+    const viewCartBtn = document.getElementById('view-cart');
+    const cartModal = document.getElementById('cart-modal');
+    const closeCartBtn = document.getElementById('close-cart');
+    const cartItemsContainer = document.getElementById('cart-items');
+    const emptyCartMessage = document.getElementById('empty-cart-message');
+    const cartModalTotal = document.getElementById('cart-modal-total');
+    const tableNumberElements = document.querySelectorAll('#table-number, #cart-table-number, #confirm-table-number');
+    const specialInstructions = document.getElementById('special-instructions');
+    const placeOrderBtn = document.getElementById('place-order');
+    const orderConfirmation = document.getElementById('order-confirmation');
+    const newOrderBtn = document.getElementById('new-order');
+    const userNameInput = document.getElementById('user-name');
+    const userPhoneInput = document.getElementById('user-phone');
+    const currentDayElement = document.getElementById('current-day');
+    const seatModal = document.getElementById('seat-modal');
+    const closeSeatModalBtn = document.getElementById('close-seat-modal');
+    const confirmSeatBtn = document.getElementById('confirm-seat');
+    const seatOptionsContainer = document.getElementById('seat-options');
+
+    // Initialize the app
+    function init() {
+        // Check for seat parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const seatParam = urlParams.get('seat');
+        
+        // Set current day
+        const today = new Date().getDay();
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        currentDay = dayNames[today];
+        
+        // Capitalize first letter for display
+        currentDayElement.textContent = currentDay.charAt(0).toUpperCase() + currentDay.slice(1);
+        
+        // Set active day button
+        document.querySelector(`.day-selector[data-day="${currentDay}"]`).classList.add('active');
+        
+        // Check if seat is provided in URL
+        if (seatParam) {
+            const seatId = parseInt(seatParam);
+            const seat = seatData.find(s => s.id === seatId);
+            
+            if (seat && seat.isAvailable) {
+                selectedSeat = seat;
+                tableNumber = seat.id;
+                updateTableNumber();
+                simulateScan();
+            } else {
+                // Seat not available or invalid, show seat selection
+                showSeatModal();
+            }
+        } else {
+            // No seat in URL, show seat selection
+            showSeatModal();
+        }
+
+        // Event listeners
+        simulateScanBtn.addEventListener('click', simulateScan);
+        categoryButtons.forEach(btn => {
+            btn.addEventListener('click', handleCategoryChange);
+        });
+        timeTabs.forEach(tab => {
+            tab.addEventListener('click', handleTimeChange);
+        });
+        daySelectors.forEach(selector => {
+            selector.addEventListener('click', handleDayChange);
+        });
+        viewCartBtn.addEventListener('click', openCart);
+        closeCartBtn.addEventListener('click', closeCart);
+        placeOrderBtn.addEventListener('click', placeOrder);
+        newOrderBtn.addEventListener('click', startNewOrder);
+        closeSeatModalBtn.addEventListener('click', closeSeatModal);
+        confirmSeatBtn.addEventListener('click', confirmSeatSelection);
+        handleCurrentTime();
+    }
+
+    // Show seat selection modal
+    function showSeatModal() {
+        renderSeatOptions();
+        seatModal.classList.remove('hidden');
+        scannerScreen.classList.add('hidden');
+    }
+
+    // Close seat modal
+    function closeSeatModal() {
+        seatModal.classList.add('hidden');
+        scannerScreen.classList.remove('hidden');
+    }
+
+    // Render seat options
+    function renderSeatOptions() {
+        seatOptionsContainer.innerHTML = '';
+        
+        seatData.forEach(seat => {
+            const seatElement = document.createElement('div');
+            seatElement.className = `seat-option p-4 rounded-lg border-2 text-center cursor-pointer ${
+                seat.isAvailable 
+                ? 'border-green-500 bg-green-50 hover:bg-green-100' 
+                : 'border-gray-300 bg-gray-100 occupied'
+            }`;
+            
+            seatElement.innerHTML = `
+                <div class="text-2xl mb-2">${seat.isAvailable ? '💺' : '❌'}</div>
+                <h3 class="font-bold">Seat ${seat.id}</h3>
+                <p class="text-sm text-gray-600">Capacity: ${seat.capacity} people</p>
+                <p class="text-xs text-gray-500 mt-1">${seat.section}</p>
+                <p class="text-xs text-gray-500 mt-1">${seat.description}</p>
+                ${seat.isAvailable ? 
+                    `<span class="inline-block mt-2 px-2 py-1 bg-green-500 text-white text-xs rounded-full">Available</span>` : 
+                    `<span class="inline-block mt-2 px-2 py-1 bg-gray-500 text-white text-xs rounded-full">Occupied</span>`
+                }
+            `;
+            
+            if (seat.isAvailable) {
+                seatElement.addEventListener('click', () => selectSeat(seat));
+            }
+            
+            seatOptionsContainer.appendChild(seatElement);
+        });
+    }
+
+    // Select a seat
+    function selectSeat(seat) {
+        // Remove previous selection
+        document.querySelectorAll('.seat-option').forEach(el => {
+            el.classList.remove('border-blue-500', 'bg-blue-100');
+        });
+        
+        // Highlight selected seat
+        event.currentTarget.classList.add('border-blue-500', 'bg-blue-100');
+        
+        selectedSeat = seat;
+    }
+
+    // Confirm seat selection
+    function confirmSeatSelection() {
+        if (!selectedSeat) {
+            alert('Please select a seat to continue');
+            return;
+        }
+        
+        tableNumber = selectedSeat.id;
+        updateTableNumber();
+        closeSeatModal();
+        simulateScan();
+    }
+
+    // Update table number in UI
+    function updateTableNumber() {
+        tableNumberElements.forEach(el => {
+            el.textContent = tableNumber;
+        });
+    }
+
+    // Simulate QR code scan
+    function simulateScan() {
+        scannerScreen.classList.add('opacity-0');
+        setTimeout(() => {
+            scannerScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+        }, 500);
+    }
+
+    // Handle category change
+    function handleCategoryChange(e) {
+        currentCategory = e.currentTarget.dataset.category;
+        
+        // Update active button
+        categoryButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        e.currentTarget.classList.add('active');
+        
+        // Re-render menu items
+        renderMenuItems();
+    }
+
+    // Handle time change
+    function handleTimeChange(e) {
+        currentTime = e.currentTarget.dataset.time;
+        
+        // Update active tab
+        timeTabs.forEach(tab => {
+            tab.classList.remove('active');
+        });
+        e.currentTarget.classList.add('active');
+        
+        // Re-render menu items
+        renderMenuItems();
+    }
+
+    // Handle day change
+    function handleDayChange(e) {
+        currentDay = e.currentTarget.dataset.day;
+        
+        // Update active day
+        daySelectors.forEach(selector => {
+            selector.classList.remove('active');
+        });
+        e.currentTarget.classList.add('active');
+        
+        // Update day display
+        // currentDayElement.textContent = currentDay.charAt(0).toUpperCase() + currentDay.slice(1);
+        
+        // Re-render menu items
+        renderMenuItems();
+    }
+    // decide current time for rendering for decide breakfast .lunch dinner
+    function handleCurrentTime() {
+        const now = new Date();
+        const hour = now.getHours();
+
+        // Decide time slot based on hour
+        if (hour >= 5 && hour < 11) {
+            currentTime = 'morning';
+        } else if (hour >= 11 && hour < 17) {
+            currentTime = 'lunch';
+        } else {
+            currentTime = 'dinner';
+        }
+
+        // Update active time tab
+        timeTabs.forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.time === currentTime) {
+                tab.classList.add('active');
+            }
+        });
+
+        renderMenuItems();
+    }
+    // Render menu items based on current category, time and day
+    function renderMenuItems() {
+        menuItemsContainer.innerHTML = '';
+        
+        let items = menuData[currentTime][currentDay];
+        
+        // Filter by category if not "all"
+        if (currentCategory !== 'all') {
+            items = items.filter(item => item.category === currentCategory);
+        }
+        
+        if (items.length === 0) {
+            menuItemsContainer.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <div class="text-5xl text-gray-300 mb-4">🍽️</div>
+                    <h3 class="text-xl font-semibold text-gray-600">No items available</h3>
+                    <p class="text-gray-500">Try selecting a different category or time</p>
+                </div>
+            `;
+            return;
+        }
+        
+        items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'menu-item-card bg-white rounded-xl shadow-md overflow-hidden';
+            itemElement.innerHTML = `
+                <div class="relative">
+                    <div class="h-40 bg-gradient-to-r from-blue-100 to-orange-100 flex items-center justify-center text-5xl">
+                        ${item.image}
+                    </div>
+                    ${item.isSpecial ? 
+                        `<div class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">SPECIAL</div>` : ''}
+                    ${!item.isVeg ? 
+                        `<div class="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">NON-VEG</div>` : 
+                        `<div class="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">VEG</div>`
+                    }
+                </div>
+                <div class="p-4">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg">${item.name}</h3>
+                            <p class="text-gray-600 text-sm mt-1">${item.description}</p>
+                            <p class="text-orange-600 font-bold mt-2">₹${item.price.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <button class="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg add-to-cart transition-colors duration-200" data-id="${item.id}">
+                        Add to Order
+                    </button>
+                </div>
+            `;
+            menuItemsContainer.appendChild(itemElement);
+        });
+        
+        // Add event listeners to Add to Cart buttons
+        document.querySelectorAll('.add-to-cart').forEach(btn => {
+            btn.addEventListener('click', addToCart);
+        });
+    }
+
+    // Add item to cart
+    function addToCart(e) {
+        const itemId = parseInt(e.currentTarget.dataset.id);
+        
+        // Find item in current menu
+        const items = menuData[currentTime][currentDay];
+        const item = items.find(i => i.id === itemId);
+        
+        if (!item) return;
+        
+        // Check if item already in cart
+        const existingItem = cart.find(i => i.id === itemId && i.time === currentTime && i.day === currentDay);
+        
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({
+                ...item,
+                quantity: 1,
+                time: currentTime,
+                day: currentDay
+            });
+        }
+        
+        updateCart();
+        
+        // Add pulse animation to cart button
+        viewCartBtn.classList.add('cart-pulse');
+        setTimeout(() => {
+            viewCartBtn.classList.remove('cart-pulse');
+        }, 1000);
+    }
+
+    // Update cart UI
+    function updateCart() {
+        // Update cart count
+        const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+        cartCount.textContent = totalItems;
+        cartBadge.textContent = totalItems;
+        
+        // Update cart total
+        const total = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        cartTotal.textContent = `₹${total.toFixed(2)}`;
+        cartModalTotal.textContent = `₹${total.toFixed(2)}`;
+        
+        // Update cart items in modal
+        renderCartItems();
+    }
+
+    // Render cart items
+    function renderCartItems() {
+        if (cart.length === 0) {
+            emptyCartMessage.classList.remove('hidden');
+            cartItemsContainer.innerHTML = `
+                <div class="text-center py-10">
+                    <div class="text-5xl mb-4 text-gray-300"><i class="fas fa-shopping-cart"></i></div>
+                    <h3 class="text-lg font-semibold text-gray-600">Your cart is empty</h3>
+                    <p class="text-gray-500">Add some delicious items to your order!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        emptyCartMessage.classList.add('hidden');
+        cartItemsContainer.innerHTML = '';
+        
+        cart.forEach(item => {
+            const cartItemElement = document.createElement('div');
+            cartItemElement.className = 'flex justify-between items-center py-3 border-b border-gray-200';
+            cartItemElement.innerHTML = `
+                <div>
+                    <h4 class="font-bold">${item.name}</h4>
+                    <p class="text-gray-600 text-sm">${item.time} • ${item.day}</p>
+                    <p class="text-gray-600">₹${item.price.toFixed(2)} × ${item.quantity}</p>
+                </div>
+                <div class="flex items-center">
+                    <button class="text-orange-500 border border-orange-500 rounded-l-lg px-2 py-1 decrease-item" data-id="${item.id}" data-time="${item.time}" data-day="${item.day}">-</button>
+                    <span class="border-t border-b border-orange-500 px-3 py-1">${item.quantity}</span>
+                    <button class="text-white bg-orange-500 rounded-r-lg px-2 py-1 increase-item" data-id="${item.id}" data-time="${item.time}" data-day="${item.day}">+</button>
+                    <button class="text-red-500 ml-4 remove-item" data-id="${item.id}" data-time="${item.time}" data-day="${item.day}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            cartItemsContainer.appendChild(cartItemElement);
+        });
+        
+        // Add event listeners to cart item buttons
+        document.querySelectorAll('.increase-item').forEach(btn => {
+            btn.addEventListener('click', increaseItemQuantity);
+        });
+        
+        document.querySelectorAll('.decrease-item').forEach(btn => {
+            btn.addEventListener('click', decreaseItemQuantity);
+        });
+        
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', removeItemFromCart);
+        });
+    }
+
+    // Increase item quantity
+    function increaseItemQuantity(e) {
+        const itemId = parseInt(e.currentTarget.dataset.id);
+        const time = e.currentTarget.dataset.time;
+        const day = e.currentTarget.dataset.day;
+        
+        const item = cart.find(i => i.id === itemId && i.time === time && i.day === day);
+        
+        if (item) {
+            item.quantity += 1;
+            updateCart();
+        }
+    }
+
+    // Decrease item quantity
+    function decreaseItemQuantity(e) {
+        const itemId = parseInt(e.currentTarget.dataset.id);
+        const time = e.currentTarget.dataset.time;
+        const day = e.currentTarget.dataset.day;
+        
+        const item = cart.find(i => i.id === itemId && i.time === time && i.day === day);
+        
+        if (item) {
+            if (item.quantity > 1) {
+                item.quantity -= 1;
+            } else {
+                cart = cart.filter(i => !(i.id === itemId && i.time === time && i.day === day));
+            }
+            updateCart();
+        }
+    }
+
+    // Remove item from cart
+    function removeItemFromCart(e) {
+        const itemId = parseInt(e.currentTarget.dataset.id);
+        const time = e.currentTarget.dataset.time;
+        const day = e.currentTarget.dataset.day;
+        
+        cart = cart.filter(i => !(i.id === itemId && i.time === time && i.day === day));
+        updateCart();
+    }
+
+    // Open cart modal
+    function openCart() {
+        if (cart.length === 0) return;
+        cartModal.classList.remove('hidden');
+    }
+
+    // Close cart modal
+    function closeCart() {
+        cartModal.classList.add('hidden');
+    }
+
+    // Place order
+    function placeOrder() {
+        // In a real app, you would send the order to a server here
+        console.log('Order placed:', {
+            tableNumber,
+            seat: selectedSeat,
+            items: cart,
+            userName: userNameInput.value,
+            userPhone: userPhoneInput.value,
+            specialInstructions: specialInstructions.value
+        });
+        
+        // Show confirmation
+        cartModal.classList.add('hidden');
+        orderConfirmation.classList.remove('hidden');
+    }
+
+    // Start new order
+    function startNewOrder() {
+        // Reset cart and special instructions
+        cart = [];
+        specialInstructions.value = '';
+        userNameInput.value = '';
+        userPhoneInput.value = '';
+        updateCart();
+        
+        // Hide confirmation and show menu
+        orderConfirmation.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+    }
+
+    // Initialize the app when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', init);
+</script>
